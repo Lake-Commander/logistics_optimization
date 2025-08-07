@@ -2,59 +2,149 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import os
 from PIL import Image
 
-# === Page Config ===
-st.set_page_config(page_title="Delivery Delay Predictor", layout="wide")
+# === CONFIGURATION ===
+st.set_page_config(page_title="SwiftChain Delivery Delay Predictor", layout="wide")
 
-# === Load Model & Scaler ===
+# === Load model and sample data ===
 @st.cache_resource
 def load_model():
-    return joblib.load("model.pkl")
+    return joblib.load("models/best_model.pkl")
 
-@st.cache_resource
-def load_scaler():
-    return joblib.load("scaler.pkl")
+@st.cache_data
+def load_sample():
+    df = pd.read_csv("logistics_featurized.csv").drop(columns=["label"], errors='ignore')
+    return df
 
 model = load_model()
-scaler = load_scaler()
-
-# === Helper: Expected Columns ===
-expected_columns = [
-    "payment_type", "profit_per_order", "sales_per_customer", "category_id", "category_name",
-    "customer_city", "customer_country", "customer_id", "customer_segment", "customer_state", "customer_zipcode",
-    "department_id", "department_name", "latitude", "longitude", "market", "order_city", "order_country",
-    "order_customer_id", "order_date", "order_id", "order_item_cardprod_id", "order_item_discount",
-    "order_item_discount_rate", "order_item_id", "order_item_product_price", "order_item_profit_ratio",
-    "order_item_quantity", "sales", "order_item_total_amount", "order_profit_per_order", "order_region",
-    "order_state", "order_status", "product_card_id", "product_category_id", "product_name", "product_price",
-    "shipping_date", "shipping_mode", "label", "is_late_shipping", "is_weekend_shipping", "order_weekday",
-    "shipping_delay_days"
-]
-
-# === Helper: Generate Predictions ===
-def preprocess_and_predict(data):
-    missing = set(expected_columns) - set(data.columns)
-    if missing:
-        st.error(f"Prediction failed: columns are missing: {missing}")
-        return None
-
-    X = data[expected_columns].copy()
-    if scaler:
-        X_scaled = scaler.transform(X.select_dtypes(include=np.number))
-        X[X.select_dtypes(include=np.number).columns] = X_scaled
-
-    predictions = model.predict(X)
-    return predictions
+preprocessor = model.named_steps['preprocessor']
+classifier = model.named_steps['classifier']
+sample_df = load_sample()
+expected_cols = sample_df.columns.tolist()
 
 # === Tabs ===
-tabs = st.sidebar.radio("Navigation", ["📊 Dashboard", "📁 Predict", "📋 Input Schema"])
+tabs = st.tabs(["📦 Predict Delay", "📑 Expected Schema", "📊 Dashboard"])
 
-# === Tab 1: Dashboard ===
-if tabs == "📊 Dashboard":
-    st.title("📊 Exploratory Dashboard")
-    st.markdown("Visual insights from training data")
+# === Tab 1: Predict Delay ===
+with tabs[0]:
+    st.title("🚚 SwiftChain Delivery Delay Prediction")
+    st.markdown("""
+    SwiftChain Analytics specializes in transforming logistics data into operational efficiency.  
+    This app predicts whether a customer order will be delivered **early**, **on time**, or **late** based on historical order data.
+
+    📦 Built by a contracted Data Scientist for SwiftChain's 2024 supply chain intelligence initiative.
+    """)
+
+    st.sidebar.image("https://cdn-icons-png.flaticon.com/512/5972/5972511.png", width=80)
+    st.sidebar.title("📊 Project Details")
+    st.sidebar.markdown("""
+    **Company**: SwiftChain Analytics  
+    **Founded**: 2010 (HQ: Chicago)  
+    **Use Case**: Predicting delivery delays in real-time  
+    **Label**:  
+    - `-1`: Late  
+    - `0`: On Time  
+    - `1`: Early  
+    """)
+
+    st.header("🧾 Upload Order Data")
+    uploaded_file = st.file_uploader("Upload a CSV file (must match featurized columns)", type=["csv"])
+
+    if uploaded_file:
+        input_df = pd.read_csv(uploaded_file)
+
+        uploaded_cols = set(input_df.columns)
+        required_cols = set(expected_cols)
+        missing = required_cols - uploaded_cols
+        used_cols = uploaded_cols & required_cols
+
+        if missing:
+            st.warning(f"⚠️ Missing columns in uploaded file: {', '.join(sorted(missing))}")
+            if len(used_cols) < 5:
+                st.error("🚫 Not enough valid columns to proceed with prediction.")
+                st.stop()
+
+        input_df = input_df[list(used_cols)]
+        aligned_df = pd.DataFrame(columns=expected_cols)
+        for col in expected_cols:
+            aligned_df[col] = input_df[col] if col in input_df.columns else np.nan
+
+        st.subheader("🔍 Predict Delivery Status")
+        if st.button("Run Prediction"):
+            try:
+                processed_input = preprocessor.transform(aligned_df)
+                prediction = classifier.predict(processed_input)
+
+                label_map = {-1: "🔴 Late", 0: "🟡 On Time", 1: "🟢 Early"}
+                result = [label_map.get(int(p), "⚠️ Unknown") for p in prediction]
+
+                input_df["Predicted Status"] = result
+                st.success("✅ Prediction Complete")
+                st.dataframe(input_df)
+            except Exception as e:
+                st.error(f"Prediction failed: {e}")
+    else:
+        st.info("📤 Please upload a CSV file to begin prediction.")
+
+# === Tab 2: Expected Schema ===
+with tabs[1]:
+    st.subheader("📑 Expected Input Schema")
+    st.info("All fields below are required for prediction. Ensure correct formatting (especially for dates and categorical fields).")
+
+    schema_data = [
+        {"Column Name": "payment_type", "Description": "Mode of payment (e.g., Credit Card, Cash)"},
+        {"Column Name": "profit_per_order", "Description": "Profit made per order"},
+        {"Column Name": "sales_per_customer", "Description": "Total sales value per customer"},
+        {"Column Name": "category_id", "Description": "ID of the product category"},
+        {"Column Name": "category_name", "Description": "Name of the product category"},
+        {"Column Name": "customer_city", "Description": "Customer's city"},
+        {"Column Name": "customer_country", "Description": "Customer's country"},
+        {"Column Name": "customer_id", "Description": "Unique customer ID"},
+        {"Column Name": "customer_segment", "Description": "Customer segmentation (e.g., Consumer, Corporate)"},
+        {"Column Name": "customer_state", "Description": "Customer's state"},
+        {"Column Name": "customer_zipcode", "Description": "Customer's ZIP code"},
+        {"Column Name": "department_id", "Description": "ID of the department selling the product"},
+        {"Column Name": "department_name", "Description": "Name of the department"},
+        {"Column Name": "latitude", "Description": "Shipping location latitude"},
+        {"Column Name": "longitude", "Description": "Shipping location longitude"},
+        {"Column Name": "market", "Description": "Geographic market segment (e.g., Africa, EU)"},
+        {"Column Name": "order_city", "Description": "City where order was placed"},
+        {"Column Name": "order_country", "Description": "Country where order was placed"},
+        {"Column Name": "order_customer_id", "Description": "Customer ID used in the order"},
+        {"Column Name": "order_date", "Description": "Date when the order was placed (YYYY-MM-DD)"},
+        {"Column Name": "order_id", "Description": "Unique identifier of the order"},
+        {"Column Name": "order_item_cardprod_id", "Description": "Product ID in the order"},
+        {"Column Name": "order_item_discount", "Description": "Discount amount on the item"},
+        {"Column Name": "order_item_discount_rate", "Description": "Discount as a percentage"},
+        {"Column Name": "order_item_id", "Description": "ID of the order item"},
+        {"Column Name": "order_item_product_price", "Description": "Price of the product"},
+        {"Column Name": "order_item_profit_ratio", "Description": "Profit ratio on the product"},
+        {"Column Name": "order_item_quantity", "Description": "Quantity of the item ordered"},
+        {"Column Name": "sales", "Description": "Total sales amount"},
+        {"Column Name": "order_item_total_amount", "Description": "Total amount for the item"},
+        {"Column Name": "order_profit_per_order", "Description": "Profit for this entire order"},
+        {"Column Name": "order_region", "Description": "Region of the order"},
+        {"Column Name": "order_state", "Description": "State of the order"},
+        {"Column Name": "order_status", "Description": "Status (e.g., Completed, Cancelled)"},
+        {"Column Name": "product_card_id", "Description": "ID of the product card"},
+        {"Column Name": "product_category_id", "Description": "Category ID of the product"},
+        {"Column Name": "product_name", "Description": "Name of the product"},
+        {"Column Name": "product_price", "Description": "Listed price of the product"},
+        {"Column Name": "shipping_date", "Description": "Date when the item was shipped (YYYY-MM-DD)"},
+        {"Column Name": "shipping_mode", "Description": "Mode of shipping (e.g., First Class, Standard)"},
+        {"Column Name": "label", "Description": "(Optional for prediction) Whether order was delayed (for training only)"},
+        {"Column Name": "is_late_shipping", "Description": "Boolean: Was the shipping late? (can be auto-generated)"},
+        {"Column Name": "is_weekend_shipping", "Description": "Boolean: Did shipping occur on a weekend?"},
+        {"Column Name": "order_weekday", "Description": "Day of week order was placed (0=Monday, 6=Sunday)"},
+        {"Column Name": "shipping_delay_days", "Description": "Number of days between order and shipping"},
+    ]
+    schema_df = pd.DataFrame(schema_data)
+    st.dataframe(schema_df, use_container_width=True)
+
+# === Tab 3: Dashboard ===
+with tabs[2]:
+    st.subheader("📊 Visual Analytics Dashboard")
 
     viz_files = [
         ("delivery_status_distribution.png", "Delivery Status Distribution"),
@@ -72,76 +162,22 @@ if tabs == "📊 Dashboard":
         else:
             st.warning(f"⚠️ {file_name} not found.")
 
-# === Tab 2: Predict ===
-elif tabs == "📁 Predict":
-    st.title("📁 Predict Delivery Delay")
-    uploaded_file = st.file_uploader("Upload a CSV file with required columns", type=["csv"])
+    st.markdown("---")
+    st.subheader("📌 Top Predictive Features")
+    try:
+        st.image("output/phase5/feature_importance.png", use_column_width=True, caption="Top 15 Feature Importances")
+    except:
+        st.warning("Feature importance image not found.")
 
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.write("📄 Uploaded Data Preview:", df.head())
+    st.markdown("---")
+    st.subheader("💡 Key Insights & Recommendations")
+    try:
+        with open("output/phase5/insights_and_recommendations.txt", "r", encoding="utf-8") as f:
+            content = f.read()
+        st.code(content, language='markdown')
+    except:
+        st.warning("Insights file not found.")
 
-        with st.spinner("Predicting..."):
-            preds = preprocess_and_predict(df)
-            if preds is not None:
-                df['Predicted_Label'] = preds
-                st.success("✅ Prediction complete!")
-                st.write(df[['order_id', 'Predicted_Label']].head())
-                csv = df.to_csv(index=False)
-                st.download_button("⬇️ Download Results", csv, "predictions.csv", "text/csv")
-
-# === Tab 3: Input Schema ===
-elif tabs == "📋 Input Schema":
-    st.title("📋 Expected Input Schema")
-    st.markdown("All fields below are required. Ensure correct formatting (especially for dates and categorical fields).")
-
-    schema_dict = {
-        "payment_type": "Mode of payment (e.g., Credit Card, Cash)",
-        "profit_per_order": "Profit made per order",
-        "sales_per_customer": "Total sales value per customer",
-        "category_id": "ID of the product category",
-        "category_name": "Name of the product category",
-        "customer_city": "Customer's city",
-        "customer_country": "Customer's country",
-        "customer_id": "Unique customer ID",
-        "customer_segment": "Customer segmentation (e.g., Consumer, Corporate)",
-        "customer_state": "Customer's state",
-        "customer_zipcode": "Customer's ZIP code",
-        "department_id": "ID of the department selling the product",
-        "department_name": "Name of the department",
-        "latitude": "Shipping location latitude",
-        "longitude": "Shipping location longitude",
-        "market": "Geographic market segment (e.g., Africa, EU)",
-        "order_city": "City where order was placed",
-        "order_country": "Country where order was placed",
-        "order_customer_id": "Customer ID used in the order",
-        "order_date": "Date when the order was placed (YYYY-MM-DD)",
-        "order_id": "Unique identifier of the order",
-        "order_item_cardprod_id": "Product ID in the order",
-        "order_item_discount": "Discount amount on the item",
-        "order_item_discount_rate": "Discount as a percentage",
-        "order_item_id": "ID of the order item",
-        "order_item_product_price": "Price of the product",
-        "order_item_profit_ratio": "Profit ratio on the product",
-        "order_item_quantity": "Quantity of the item ordered",
-        "sales": "Total sales amount",
-        "order_item_total_amount": "Total amount for the item",
-        "order_profit_per_order": "Profit for this entire order",
-        "order_region": "Region of the order",
-        "order_state": "State of the order",
-        "order_status": "Status (e.g., Completed, Cancelled)",
-        "product_card_id": "ID of the product card",
-        "product_category_id": "Category ID of the product",
-        "product_name": "Name of the product",
-        "product_price": "Listed price of the product",
-        "shipping_date": "Date when the item was shipped (YYYY-MM-DD)",
-        "shipping_mode": "Mode of shipping (e.g., First Class, Standard)",
-        "label": "(Optional for prediction) Whether order was delayed (for training only)",
-        "is_late_shipping": "Boolean: Was the shipping late? (can be auto-generated)",
-        "is_weekend_shipping": "Boolean: Did shipping occur on a weekend?",
-        "order_weekday": "Day of week order was placed (0=Monday, 6=Sunday)",
-        "shipping_delay_days": "Number of days between order and shipping"
-    }
-
-    schema_df = pd.DataFrame(list(schema_dict.items()), columns=["Column Name", "Description"])
-    st.dataframe(schema_df, use_container_width=True)
+# === Footer ===
+st.markdown("---")
+st.markdown("""© 2024 SwiftChain Analytics | Empowering global logistics through predictive intelligence.""")
