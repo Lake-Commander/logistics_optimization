@@ -147,18 +147,20 @@ with tabs[2]:
     st.subheader("📊 Visual Analytics Dashboard")
 
     viz_files = [
-        ("eda/plots/delivery_status_distribution.png", "Delivery Status Distribution"),
-        ("eda/plots/discount_vs_label.png", "Discount vs Delivery Status"),
-        ("eda/plots/missing_values_matrix.png", "Missing Value Matrix"),
-        ("eda/plots/shipping_mode_vs_label.png", "Shipping Mode vs Delivery Status"),
-        ("eda/plots/top10_regions_vs_label.png", "Top 10 Regions vs Delivery Status"),
+        ("delivery_status_distribution.png", "Delivery Status Distribution"),
+        ("discount_vs_label.png", "Discount vs Delivery Status"),
+        ("missing_values_matrix.png", "Missing Value Matrix"),
+        ("shipping_mode_vs_label.png", "Shipping Mode vs Delivery Status"),
+        ("top10_regions_vs_label.png", "Top 10 Regions vs Delivery Status"),
     ]
 
-    for file, caption in viz_files:
-        try:
-            st.image(f"output/phase5/{file}", use_column_width=True, caption=caption)
-        except:
-            st.warning(f"{file} not found.")
+    for file_name, title in viz_files:
+        path = os.path.join("eda/plots", file_name)
+        if os.path.exists(path):
+            st.subheader(title)
+            st.image(Image.open(path), use_column_width=True)
+        else:
+            st.warning(f"⚠️ {file_name} not found.")
 
     st.markdown("---")
     st.subheader("📌 Top Predictive Features")
