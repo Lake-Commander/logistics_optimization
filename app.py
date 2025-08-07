@@ -147,11 +147,11 @@ with tabs[2]:
     st.subheader("📊 Visual Analytics Dashboard")
 
     viz_files = [
-        ("delivery_status_distribution.png", "Delivery Status Distribution"),
-        ("discount_vs_label.png", "Discount vs Delivery Status"),
-        ("missing_values_matrix.png", "Missing Value Matrix"),
-        ("shipping_mode_vs_label.png", "Shipping Mode vs Delivery Status"),
-        ("top10_regions_vs_label.png", "Top 10 Regions vs Delivery Status"),
+        ("eda/plots/delivery_status_distribution.png", "Delivery Status Distribution"),
+        ("eda/plots/discount_vs_label.png", "Discount vs Delivery Status"),
+        ("eda/plots/missing_values_matrix.png", "Missing Value Matrix"),
+        ("eda/plots/shipping_mode_vs_label.png", "Shipping Mode vs Delivery Status"),
+        ("eda/plots/top10_regions_vs_label.png", "Top 10 Regions vs Delivery Status"),
     ]
 
     for file, caption in viz_files:
