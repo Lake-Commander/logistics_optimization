@@ -154,13 +154,11 @@ with tabs[2]:
         ("top10_regions_vs_label.png", "Top 10 Regions vs Delivery Status"),
     ]
 
-    for file_name, title in viz_files:
-        path = os.path.join("eda/plots", file_name)
-        if os.path.exists(path):
-            st.subheader(title)
-            st.image(Image.open(path), use_column_width=True)
-        else:
-            st.warning(f"⚠️ {file_name} not found.")
+    for file, caption in viz_files:
+        try:
+            st.image(f"eda/plots/{file}", use_column_width=True, caption=caption)
+        except:
+            st.warning(f"{file} not found.")
 
     st.markdown("---")
     st.subheader("📌 Top Predictive Features")
