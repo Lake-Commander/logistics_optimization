@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -87,6 +88,24 @@ if uploaded_file:
 
 else:
     st.info("📤 Please upload a CSV file to begin prediction.")
+
+# === Visual Analytics ===
+st.markdown("---")
+st.header("📊 Visual Analytics Dashboard")
+
+viz_files = [
+    ("delivery_status_distribution.png", "Delivery Status Distribution"),
+    ("discount_vs_label.png", "Discount vs Delivery Status"),
+    ("missing_values_matrix.png", "Missing Value Matrix"),
+    ("shipping_mode_vs_label.png", "Shipping Mode vs Delivery Status"),
+    ("top10_regions_vs_label.png", "Top 10 Regions vs Delivery Status"),
+]
+
+for file, caption in viz_files:
+    try:
+        st.image(f"output/phase5/{file}", use_column_width=True, caption=caption)
+    except:
+        st.warning(f"{file} not found.")
 
 # === Feature Importance ===
 st.markdown("---")
