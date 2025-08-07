@@ -17,6 +17,10 @@ def load_sample():
     df = pd.read_csv("logistics_featurized.csv").drop(columns=["label"], errors='ignore')
     return df
 
+@st.cache_data
+def load_cleaned_sample():
+    return pd.read_csv("logistics_cleaned.csv")
+
 model = load_model()
 preprocessor = model.named_steps['preprocessor']
 classifier = model.named_steps['classifier']
@@ -53,44 +57,40 @@ with tabs[0]:
 
     if uploaded_file:
         input_df = pd.read_csv(uploaded_file)
-        else:
-        input_df = sample_df.copy()
-        source_label = "📁 Default Sample Data: `logistics_cleaned.csv`"
-
-    st.caption(f"Data Source: {source_label}")
-
-        uploaded_cols = set(input_df.columns)
-        required_cols = set(expected_cols)
-        missing = required_cols - uploaded_cols
-        used_cols = uploaded_cols & required_cols
-
-        if missing:
-            st.warning(f"⚠️ Missing columns in uploaded file: {', '.join(sorted(missing))}")
-            if len(used_cols) < 5:
-                st.error("🚫 Not enough valid columns to proceed with prediction.")
-                st.stop()
-
-        input_df = input_df[list(used_cols)]
-        aligned_df = pd.DataFrame(columns=expected_cols)
-        for col in expected_cols:
-            aligned_df[col] = input_df[col] if col in input_df.columns else np.nan
-
-        st.subheader("🔍 Predict Delivery Status")
-        if st.button("Run Prediction"):
-            try:
-                processed_input = preprocessor.transform(aligned_df)
-                prediction = classifier.predict(processed_input)
-
-                label_map = {-1: "🔴 Late", 0: "🟡 On Time", 1: "🟢 Early"}
-                result = [label_map.get(int(p), "⚠️ Unknown") for p in prediction]
-
-                input_df["Predicted Status"] = result
-                st.success("✅ Prediction Complete")
-                st.dataframe(input_df, use_container_width=True)
-            except Exception as e:
-                st.error(f"Prediction failed: {e}")
     else:
-        st.info("📤 Please upload a CSV file to begin prediction.")
+        st.info("📥 No file uploaded. Using default sample data from `logistics_cleaned.csv`.")
+        input_df = load_cleaned_sample()
+
+    uploaded_cols = set(input_df.columns)
+    required_cols = set(expected_cols)
+    missing = required_cols - uploaded_cols
+    used_cols = uploaded_cols & required_cols
+
+    if missing:
+        st.warning(f"⚠️ Missing columns in input: {', '.join(sorted(missing))}")
+        if len(used_cols) < 5:
+            st.error("🚫 Not enough valid columns to proceed with prediction.")
+            st.stop()
+
+    input_df = input_df[list(used_cols)]
+    aligned_df = pd.DataFrame(columns=expected_cols)
+    for col in expected_cols:
+        aligned_df[col] = input_df[col] if col in input_df.columns else np.nan
+
+    st.subheader("🔍 Predict Delivery Status")
+    if st.button("Run Prediction"):
+        try:
+            processed_input = preprocessor.transform(aligned_df)
+            prediction = classifier.predict(processed_input)
+
+            label_map = {-1: "🔴 Late", 0: "🟡 On Time", 1: "🟢 Early"}
+            result = [label_map.get(int(p), "⚠️ Unknown") for p in prediction]
+
+            input_df["Predicted Status"] = result
+            st.success("✅ Prediction Complete")
+            st.dataframe(input_df, use_container_width=True)
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
 
 # === Tab 2: Expected Schema ===
 with tabs[1]:
