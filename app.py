@@ -81,7 +81,7 @@ with tabs[0]:
 
                 input_df["Predicted Status"] = result
                 st.success("✅ Prediction Complete")
-                st.dataframe(input_df)
+                st.dataframe(input_df, use_container_width=True)
             except Exception as e:
                 st.error(f"Prediction failed: {e}")
     else:
@@ -156,14 +156,14 @@ with tabs[2]:
 
     for file, caption in viz_files:
         try:
-            st.image(f"eda/plots/{file}", use_column_width=True, caption=caption)
+            st.image(f"eda/plots/{file}", use_container_width=True, caption=caption)
         except:
             st.warning(f"{file} not found.")
 
     st.markdown("---")
     st.subheader("📌 Top Predictive Features")
     try:
-        st.image("output/phase5/feature_importance.png", use_column_width=True, caption="Top 15 Feature Importances")
+        st.image("output/phase5/feature_importance.png", use_container_width=True, caption="Top 15 Feature Importances")
     except:
         st.warning("Feature importance image not found.")
 
@@ -178,4 +178,4 @@ with tabs[2]:
 
 # === Footer ===
 st.markdown("---")
-st.markdown("""© 2024 SwiftChain Analytics | Empowering global logistics through predictive intelligence.""")
+st.markdown("© 2024 SwiftChain Analytics | Empowering global logistics through predictive intelligence.")
