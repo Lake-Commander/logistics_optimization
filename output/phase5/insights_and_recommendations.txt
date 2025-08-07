@@ -1,0 +1,9 @@
+=== KEY INSIGHTS ===
+- Top predictive features include: shipping_mode, shipping_delay_days, order_customer_id, latitude, order_id.
+
+=== RECOMMENDATIONS ===
+- ✅ Optimize operations for product categories that are frequently delayed.
+- ✅ Investigate and improve shipping processes in high-delay regions.
+- ✅ Use predicted delay probabilities to notify customers ahead of time.
+- ✅ Prioritize orders with short delivery windows to improve reliability ratings.
+- ✅ Consider reinforcing customer support in delay-prone areas to manage expectations.
