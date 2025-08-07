@@ -14,7 +14,7 @@ def load_model():
 
 @st.cache_data
 def load_sample():
-    df = pd.read_csv("logistics_cleaned.csv").drop(columns=["label"], errors='ignore')
+    df = pd.read_csv("logistics_featurized.csv").drop(columns=["label"], errors='ignore')
     return df
 
 model = load_model()
@@ -49,47 +49,48 @@ with tabs[0]:
     """)
 
     st.header("🧾 Upload Order Data")
-    uploaded_file = st.file_uploader("Upload a CSV file (must match expected columns)", type=["csv"])
+    uploaded_file = st.file_uploader("Upload a CSV file (must match featurized columns)", type=["csv"])
 
     if uploaded_file:
         input_df = pd.read_csv(uploaded_file)
-        source_label = "📤 Uploaded File"
-    else:
+        else:
         input_df = sample_df.copy()
         source_label = "📁 Default Sample Data: `logistics_cleaned.csv`"
 
     st.caption(f"Data Source: {source_label}")
-    
-    uploaded_cols = set(input_df.columns)
-    required_cols = set(expected_cols)
-    missing = required_cols - uploaded_cols
-    used_cols = uploaded_cols & required_cols
 
-    if missing:
-        st.warning(f"⚠️ Missing columns: {', '.join(sorted(missing))}")
-        if len(used_cols) < 5:
-            st.error("🚫 Not enough valid columns to proceed with prediction.")
-            st.stop()
+        uploaded_cols = set(input_df.columns)
+        required_cols = set(expected_cols)
+        missing = required_cols - uploaded_cols
+        used_cols = uploaded_cols & required_cols
 
-    input_df = input_df[list(used_cols)]
-    aligned_df = pd.DataFrame(columns=expected_cols)
-    for col in expected_cols:
-        aligned_df[col] = input_df[col] if col in input_df.columns else np.nan
+        if missing:
+            st.warning(f"⚠️ Missing columns in uploaded file: {', '.join(sorted(missing))}")
+            if len(used_cols) < 5:
+                st.error("🚫 Not enough valid columns to proceed with prediction.")
+                st.stop()
 
-    st.subheader("🔍 Predict Delivery Status")
-    if st.button("Run Prediction"):
-        try:
-            processed_input = preprocessor.transform(aligned_df)
-            prediction = classifier.predict(processed_input)
+        input_df = input_df[list(used_cols)]
+        aligned_df = pd.DataFrame(columns=expected_cols)
+        for col in expected_cols:
+            aligned_df[col] = input_df[col] if col in input_df.columns else np.nan
 
-            label_map = {-1: "🔴 Late", 0: "🟡 On Time", 1: "🟢 Early"}
-            result = [label_map.get(int(p), "⚠️ Unknown") for p in prediction]
+        st.subheader("🔍 Predict Delivery Status")
+        if st.button("Run Prediction"):
+            try:
+                processed_input = preprocessor.transform(aligned_df)
+                prediction = classifier.predict(processed_input)
 
-            input_df["Predicted Status"] = result
-            st.success("✅ Prediction Complete")
-            st.dataframe(input_df, use_container_width=True)
-        except Exception as e:
-            st.error(f"Prediction failed: {e}")
+                label_map = {-1: "🔴 Late", 0: "🟡 On Time", 1: "🟢 Early"}
+                result = [label_map.get(int(p), "⚠️ Unknown") for p in prediction]
+
+                input_df["Predicted Status"] = result
+                st.success("✅ Prediction Complete")
+                st.dataframe(input_df, use_container_width=True)
+            except Exception as e:
+                st.error(f"Prediction failed: {e}")
+    else:
+        st.info("📤 Please upload a CSV file to begin prediction.")
 
 # === Tab 2: Expected Schema ===
 with tabs[1]:
@@ -137,8 +138,8 @@ with tabs[1]:
         {"Column Name": "product_price", "Description": "Listed price of the product"},
         {"Column Name": "shipping_date", "Description": "Date when the item was shipped (YYYY-MM-DD)"},
         {"Column Name": "shipping_mode", "Description": "Mode of shipping (e.g., First Class, Standard)"},
-        {"Column Name": "label", "Description": "(Optional) Whether order was delayed (for training only)"},
-        {"Column Name": "is_late_shipping", "Description": "Boolean: Was the shipping late?"},
+        {"Column Name": "label", "Description": "(Optional for prediction) Whether order was delayed (for training only)"},
+        {"Column Name": "is_late_shipping", "Description": "Boolean: Was the shipping late? (can be auto-generated)"},
         {"Column Name": "is_weekend_shipping", "Description": "Boolean: Did shipping occur on a weekend?"},
         {"Column Name": "order_weekday", "Description": "Day of week order was placed (0=Monday, 6=Sunday)"},
         {"Column Name": "shipping_delay_days", "Description": "Number of days between order and shipping"},
@@ -160,14 +161,14 @@ with tabs[2]:
 
     for file, caption in viz_files:
         try:
-            st.image(f"eda/plots/{file}", use_column_width=True, caption=caption)
+            st.image(f"eda/plots/{file}", use_container_width=True, caption=caption)
         except:
             st.warning(f"{file} not found.")
 
     st.markdown("---")
     st.subheader("📌 Top Predictive Features")
     try:
-        st.image("output/phase5/feature_importance.png", use_column_width=True, caption="Top 15 Feature Importances")
+        st.image("output/phase5/feature_importance.png", use_container_width=True, caption="Top 15 Feature Importances")
     except:
         st.warning("Feature importance image not found.")
 
