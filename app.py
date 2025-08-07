@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
-from utils import load_image
-from feature_engineering import preprocess_input
 
 # === Page Config ===
 st.set_page_config(page_title="Logistics Delay Predictor", layout="wide")
