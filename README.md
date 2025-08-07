@@ -143,7 +143,7 @@ streamlit run app.py
 
 2. Open and run logistics_optimization.ipynb in Jupyter Notebook.
 
-3. Follow the steps to preprocess, train, and save the model.
+3. Follow the steps to preprocess, train and save the model.
 
 4. Ensure your app loads the new model path.
 
